@@ -174,6 +174,10 @@ public class SnowflakeConf extends Configuration
     }
 
     snowflakeConfigUrl = findConfigFile(classLoader, "snowflake-config.xml");
+    if (snowflakeConfigUrl == null){
+      snowflakeConfigUrl = findConfigFile(classLoader, "hive-site.xml");
+      log.info("loading snowflake config from hive-site.xml");
+    }
   }
 
   private static URL findConfigFile(ClassLoader classLoader, String name)

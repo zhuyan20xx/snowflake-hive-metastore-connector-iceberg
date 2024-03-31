@@ -111,6 +111,51 @@ public class TestUtil
     return table;
   }
 
+  public static Table initializeMockIcebergRefreshTable()
+  {
+    Table table = new Table();
+
+    table.setTableName("test_iceberg_tb");
+    table.setDbName("icebergdemo");
+    table.setSd(new StorageDescriptor());
+    table.getSd().setCols(new ArrayList<>());
+    table.getSd().setInputFormat("org.apache.hadoop.mapred.TextInputFormat");
+    table.getSd().setLocation("s3n://bucketname/path/to/table");
+    table.getSd().setSerdeInfo(new SerDeInfo());
+    table.getSd().getSerdeInfo().setSerializationLib(
+            "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe");
+    table.getSd().getSerdeInfo().setParameters(new HashMap<>());
+    HashMap<String,String> parameters = new HashMap<>();
+    parameters.put("metadata_location","S3://iubeta/apps/hive/warehouse/jpz3928.db/task_schema_change_test5/metadata/00004-9df00026-c7fe-48e4-ab07-9c7c06aad3ea.metadata.json");
+    table.setParameters(parameters);
+
+    return table;
+  }
+
+  public static Table initializeMockIcebergCreateTable()
+  {
+    Table table = new Table();
+
+    table.setTableName("test_iceberg_tb");
+    table.setDbName("icebergdemo");
+    table.setSd(new StorageDescriptor());
+    table.getSd().setCols(new ArrayList<>());
+    table.getSd().setInputFormat("org.apache.hadoop.mapred.TextInputFormat");
+    table.getSd().setLocation("s3n://bucketname/path/to/table");
+    table.getSd().setSerdeInfo(new SerDeInfo());
+    table.getSd().getSerdeInfo().setSerializationLib(
+            "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe");
+    table.getSd().getSerdeInfo().setParameters(new HashMap<>());
+    HashMap<String,String> parameters = new HashMap<>();
+    parameters.put("CATALOG","zzengIcebergCatalogInt");
+    parameters.put("EXTERNAL_VOLUME","extIcebergVolC");
+    parameters.put("BASE_LOCATION","airlines/airlines");
+    parameters.put("metadata_location","S3://iubeta/apps/hive/warehouse/jpz3928.db/task_schema_change_test5/metadata/00005-07601ab7-6eac-4562-a87d-1dd3a5bd05d5.metadata.json");
+    table.setParameters(parameters);
+
+    return table;
+  }
+
   /**
    * Helper method to mock the Snowflake client to return the provided stage
    * location when querying Snowflake with a stage

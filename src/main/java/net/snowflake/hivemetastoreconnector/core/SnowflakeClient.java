@@ -69,6 +69,35 @@ public class SnowflakeClient
   }
 
   /**
+   * Creates and executes an event of Iceberg Table for snowflake. Events may be processed in
+   * the background, but events on the same table will be processed in order.
+   * @param event - the hive event details
+   * @param snowflakeConf - the configuration for Snowflake Hive metastore
+   */
+  public static void createAndExecuteCommandIcebergForSnowflake(
+          ListenerEvent event,
+          SnowflakeConf snowflakeConf)
+  {
+    Preconditions.checkNotNull(event);
+
+    // Obtains the proper command
+    log.info("Creating the Snowflake command");
+    Command command = CommandGenerator.getIcebergCommand(event, snowflakeConf);
+
+    boolean backgroundTaskEnabled = !snowflakeConf.getBoolean(
+            SnowflakeConf.ConfVars.SNOWFLAKE_CLIENT_FORCE_SYNCHRONOUS.getVarname(), false);
+    if (backgroundTaskEnabled)
+    {
+      initScheduler(snowflakeConf);
+      scheduler.enqueueMessage(command);
+    }
+    else
+    {
+      generateAndExecuteSnowflakeStatements(command, snowflakeConf);
+    }
+  }
+
+  /**
    * Helper method. Generates commands for an event and executes those commands.
    * Synchronous.
    * @param command - the command to generate statements from
@@ -272,10 +301,10 @@ public class SnowflakeClient
     }
 
     properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SCHEMA.getSnowflakePropertyName(), schema);
-    
+
     String connectStr = snowflakeConf.get(
         SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_CONNECTION.getVarname());
-
+    log.info(properties.toString());
     return DriverManager.getConnection(connectStr, properties);
   }
 
