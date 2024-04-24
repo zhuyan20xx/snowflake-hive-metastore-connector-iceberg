@@ -7,7 +7,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import net.snowflake.hivemetastoreconnector.SnowflakeConf;
 import net.snowflake.hivemetastoreconnector.SnowflakeIcebergListener;
-import net.snowflake.hivemetastoreconnector.util.HiveToSnowflakeType;
 import net.snowflake.hivemetastoreconnector.util.IcebergTableUtil;
 import net.snowflake.hivemetastoreconnector.util.StringUtil;
 import org.apache.hadoop.conf.Configuration;

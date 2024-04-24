@@ -49,39 +49,39 @@ public class SnowflakeIcebergListener extends MetaStoreEventListener
    * The listener for the create table command
    * @param tableEvent An event that was listened for
    */
-  @Override
-  public void onCreateTable(CreateTableEvent tableEvent)
-  {
-    logTableEvent("Event received", tableEvent, tableEvent.getTable());
-    if (shouldHandleCreateTable(tableEvent, tableEvent.getTable()))
-    {
-      SnowflakeClient.createAndExecuteCommandIcebergForSnowflake(tableEvent,
-                                                          snowflakeConf);
-    }
-    else
-    {
-      logTableEvent("Nothing to do", tableEvent, tableEvent.getTable());
-    }
-  }
+//  @Override
+//  public void onCreateTable(CreateTableEvent tableEvent) throws MetaException
+//  {
+//    logTableEvent("Event received", tableEvent, tableEvent.getTable());
+//    if (shouldHandleCreateTable(tableEvent, tableEvent.getTable()))
+//    {
+//      SnowflakeClient.createAndExecuteCommandIcebergForSnowflake(tableEvent,
+//                                                          snowflakeConf);
+//    }
+//    else
+//    {
+//      logTableEvent("Nothing to do", tableEvent, tableEvent.getTable());
+//    }
+//  }
 
   /**
    * The listener for the drop table command
    * @param tableEvent An event that was listened for
    */
-  @Override
-  public void onDropTable(DropTableEvent tableEvent)
-  {
-    logTableEvent("Event received", tableEvent, tableEvent.getTable());
-    if (shouldHandle(tableEvent, tableEvent.getTable()))
-    {
-      SnowflakeClient.createAndExecuteCommandIcebergForSnowflake(tableEvent,
-                                                          snowflakeConf);
-    }
-    else
-    {
-      logTableEvent("Nothing to do", tableEvent, tableEvent.getTable());
-    }
-  }
+//  @Override
+//  public void onDropTable(DropTableEvent tableEvent)
+//  {
+//    logTableEvent("Event received", tableEvent, tableEvent.getTable());
+//    if (shouldHandle(tableEvent, tableEvent.getTable()))
+//    {
+//      SnowflakeClient.createAndExecuteCommandIcebergForSnowflake(tableEvent,
+//                                                          snowflakeConf);
+//    }
+//    else
+//    {
+//      logTableEvent("Nothing to do", tableEvent, tableEvent.getTable());
+//    }
+//  }
 
   /**
    * The listener for the alter table command

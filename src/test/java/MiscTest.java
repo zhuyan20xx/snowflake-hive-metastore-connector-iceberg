@@ -3,7 +3,7 @@
  */
 
 import net.snowflake.hivemetastoreconnector.SnowflakeConf;
-import net.snowflake.hivemetastoreconnector.SnowflakeHiveListener;
+import net.snowflake.hivemetastoreconnector.SnowflakeIcebergListener;
 import net.snowflake.hivemetastoreconnector.core.SnowflakeClient;
 import net.snowflake.hivemetastoreconnector.util.HiveToSnowflakeSchema;
 import org.apache.hadoop.conf.Configuration;
@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 @PowerMockIgnore({"javax.management.*", "jdk.internal.reflect.*"})
 @PrepareForTest({Configuration.class, HiveMetaStore.HMSHandler.class,
         SnowflakeClient.class, SnowflakeConf.class,
-        SnowflakeHiveListener.class})
+        SnowflakeIcebergListener.class})
 
 /**
  * Miscellaneous Tests for the hive connector

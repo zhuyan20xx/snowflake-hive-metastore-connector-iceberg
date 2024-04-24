@@ -23,10 +23,10 @@
         <name>snowflake.jdbc.connection</name>
         <value>jdbc:snowflake://drndyyc-nd88088.snowflakecomputing.com</value>
     </property>
-    <property>
-        <name>snowflake.hive-metastore-listener.schemas</name>
-        <value>icebergdemo</value>
-    </property>
+<!--    <property>-->
+<!--        <name>snowflake.hive-metastore-listener.schemas</name>-->
+<!--        <value>icebergdemo</value>-->
+<!--    </property>-->
     <property>
         <name>snowflake.hive-metastore-listener.force-synchronous</name>
         <value>false</value>

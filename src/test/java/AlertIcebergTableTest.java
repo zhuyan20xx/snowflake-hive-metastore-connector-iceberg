@@ -13,7 +13,7 @@ import java.util.Properties;
 public class AlertIcebergTableTest {
 
     public static void main(String[] args) throws Exception {
-        testCreateTable();
+//        testCreateTable();
         testRefreshTable();
     }
 

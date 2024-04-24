@@ -5,15 +5,20 @@ package net.snowflake.hivemetastoreconnector.core;
 
 import com.google.common.base.Preconditions;
 import net.snowflake.hivemetastoreconnector.SnowflakeConf;
-import net.snowflake.hivemetastoreconnector.SnowflakeHiveListener;
+import net.snowflake.hivemetastoreconnector.SnowflakeIcebergListener;
 import net.snowflake.hivemetastoreconnector.commands.Command;
 import net.snowflake.client.jdbc.internal.apache.commons.codec.binary.Base64;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.hivemetastoreconnector.util.HiveToSnowflakeSchema;
+import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.events.ListenerEvent;
+import org.apache.hadoop.hive.ql.secrets.AWSSecretsManagerSecretSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URI;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
@@ -24,6 +29,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -35,38 +41,9 @@ import java.util.Properties;
 public class SnowflakeClient
 {
   private static final Logger log =
-      LoggerFactory.getLogger(SnowflakeHiveListener.class);
-
+      LoggerFactory.getLogger(SnowflakeIcebergListener.class);
+  private static AWSSecretsManagerSecretSource source = new AWSSecretsManagerSecretSource();
   private static Scheduler scheduler;
-
-  /**
-   * Creates and executes an event for snowflake. Events may be processed in
-   * the background, but events on the same table will be processed in order.
-   * @param event - the hive event details
-   * @param snowflakeConf - the configuration for Snowflake Hive metastore
-   */
-  public static void createAndExecuteCommandForSnowflake(
-      ListenerEvent event,
-      SnowflakeConf snowflakeConf)
-  {
-    Preconditions.checkNotNull(event);
-
-    // Obtains the proper command
-    log.info("Creating the Snowflake command");
-    Command command = CommandGenerator.getCommand(event, snowflakeConf);
-
-    boolean backgroundTaskEnabled = !snowflakeConf.getBoolean(
-        SnowflakeConf.ConfVars.SNOWFLAKE_CLIENT_FORCE_SYNCHRONOUS.getVarname(), false);
-    if (backgroundTaskEnabled)
-    {
-      initScheduler(snowflakeConf);
-      scheduler.enqueueMessage(command);
-    }
-    else
-    {
-      generateAndExecuteSnowflakeStatements(command, snowflakeConf);
-    }
-  }
 
   /**
    * Creates and executes an event of Iceberg Table for snowflake. Events may be processed in
@@ -76,7 +53,7 @@ public class SnowflakeClient
    */
   public static void createAndExecuteCommandIcebergForSnowflake(
           ListenerEvent event,
-          SnowflakeConf snowflakeConf)
+          SnowflakeConf snowflakeConf) throws MetaException
   {
     Preconditions.checkNotNull(event);
 
@@ -93,7 +70,11 @@ public class SnowflakeClient
     }
     else
     {
-      generateAndExecuteSnowflakeStatements(command, snowflakeConf);
+      try {
+        generateAndExecuteSnowflakeStatements(command, snowflakeConf);
+      }catch (Exception e){
+        throw new MetaException(e.getMessage());
+      }
     }
   }
 
@@ -105,26 +86,22 @@ public class SnowflakeClient
    */
   public static void generateAndExecuteSnowflakeStatements(
       Command command,
-      SnowflakeConf snowflakeConf)
+      SnowflakeConf snowflakeConf) throws Exception
   {
     // Generate the string queries for the command
     // Some Hive commands require more than one statement in Snowflake
     // For example, for create table, a stage must be created before the table
     log.info("Generating Snowflake queries");
     List<String> commandList;
-    try
-    {
-      String schema =
+
+    String schema =
           HiveToSnowflakeSchema.getSnowflakeSchemaFromHiveSchema(
               command.getDatabaseName(),
               snowflakeConf);
-      commandList = command.generateSqlQueries();
-      executeStatements(commandList, snowflakeConf, schema);
-    }
-    catch (Exception e)
-    {
-      log.error("Could not generate the Snowflake commands: " + e.getMessage());
-    }
+    commandList = command.generateSqlQueries();
+    executeStatements(commandList, snowflakeConf, schema);
+
+
   }
 
   /**
@@ -136,7 +113,7 @@ public class SnowflakeClient
    */
   public static void executeStatements(List<String> commandList,
                                        SnowflakeConf snowflakeConf,
-                                       String schema)
+                                       String schema) throws MetaException
   {
     log.info("Executing statements: " + String.join(", ", commandList));
 
@@ -177,13 +154,18 @@ public class SnowflakeClient
         {
           log.error("There was an error executing the statement: " +
                         e.getMessage());
+          throw new RuntimeException(e);
         }
       });
     }
-    catch (java.sql.SQLException e)
-    {
+    catch (Exception e){
       log.error("There was an error creating the query: " +
-                    e.getMessage());
+              e.toString());
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      e.printStackTrace(pw);
+      String secretName = snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETNAME.getVarname());
+      throw new MetaException("aws-sm:///"+secretName+"  "+sw.toString());
     }
   }
 
@@ -240,7 +222,7 @@ public class SnowflakeClient
    * @throws SQLException Exception thrown when initializing the connection
    */
   public static Connection getConnection(SnowflakeConf snowflakeConf, String schema)
-      throws SQLException
+      throws Exception
   {
     try
     {
@@ -279,6 +261,11 @@ public class SnowflakeClient
       properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_PASSWORD.getSnowflakePropertyName(),
                      snowflakePassword);
     }
+    String secretName = snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETNAME.getVarname());
+    snowflakePassword = source.getSecret(new URI("aws-sm:///"+secretName));
+    properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_PASSWORD.getSnowflakePropertyName(),
+              snowflakePassword);
+
 
     // JDBC private key
     String privateKeyConf = snowflakeConf.getSecret(
@@ -376,7 +363,7 @@ public class SnowflakeClient
   throws E
   {
     int maxRetries = snowflakeConf.getInt(
-        SnowflakeConf.ConfVars.SNOWFLAKE_HIVEMETASTORELISTENER_RETRY_COUNT.getVarname(), 3);
+        SnowflakeConf.ConfVars.SNOWFLAKE_HIVEMETASTORELISTENER_RETRY_COUNT.getVarname(), 1);
     int timeoutInMilliseconds = snowflakeConf.getInt(
         SnowflakeConf.ConfVars.SNOWFLAKE_HIVEMETASTORELISTENER_RETRY_TIMEOUT_MILLISECONDS.getVarname(), 1000);
     return retry(method, maxRetries, timeoutInMilliseconds);

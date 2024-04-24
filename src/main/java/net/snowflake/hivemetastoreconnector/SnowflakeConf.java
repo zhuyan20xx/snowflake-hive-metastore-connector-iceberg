@@ -97,7 +97,9 @@ public class SnowflakeConf extends Configuration
         NOT_A_SF_JDBC_PROPERTY,
         "Specifies the casing for columns in the data. Acceptable values are " +
             "UPPER, LOWER"
-    );
+    ),
+    SNOWFLAKE_JDBC_SECRETNAME("snowflake.jdbc.secretname", NOT_A_SF_JDBC_PROPERTY,
+                                    "The user to use to connect to Snowflake.");
 
     public static final Map<String, ConfVars> BY_VARNAME =
         Arrays.stream(ConfVars.values())

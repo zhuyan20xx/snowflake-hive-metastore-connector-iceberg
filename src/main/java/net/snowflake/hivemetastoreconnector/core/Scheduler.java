@@ -9,10 +9,9 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.collect.Lists;
-import net.snowflake.hivemetastoreconnector.commands.AddPartition;
+import net.snowflake.hivemetastoreconnector.SnowflakeIcebergListener;
 import net.snowflake.hivemetastoreconnector.commands.Command;
 import net.snowflake.hivemetastoreconnector.SnowflakeConf;
-import net.snowflake.hivemetastoreconnector.SnowflakeHiveListener;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class Scheduler
 {
   private static final Logger log =
-      LoggerFactory.getLogger(SnowflakeHiveListener.class);
+      LoggerFactory.getLogger(SnowflakeIcebergListener.class);
 
   // Mapping between a table and a queue of messages for that table.
   // When a queue is initialized, a task is also created. Therefore, the only
@@ -185,21 +184,10 @@ public class Scheduler
     // processed.
     while (!messages.isEmpty() && numExecuted < MAX_STATEMENTS_PER_ROUND)
     {
-      if (messages.peek() instanceof AddPartition
-          && !((AddPartition) messages.peek()).isCompact())
-      {
-        // Commands after a non-compacted command are also not compacted
-        List<AddPartition> noncompacted = new ArrayList<>();
-        while (messages.peek() instanceof AddPartition)
-        {
-          noncompacted.add((AddPartition) messages.poll());
-        }
-        Lists.reverse(AddPartition.compact(noncompacted))
-            .forEach(messages::addFirst);
-      }
-
-      SnowflakeClient.generateAndExecuteSnowflakeStatements(
-          messages.poll(), snowflakeConf);
+      try {
+        SnowflakeClient.generateAndExecuteSnowflakeStatements(
+                messages.poll(), snowflakeConf);
+      }catch (Exception e){}
       numExecuted++;
     }
 
