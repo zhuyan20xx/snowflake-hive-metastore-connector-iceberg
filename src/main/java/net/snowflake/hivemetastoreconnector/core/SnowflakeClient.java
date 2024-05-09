@@ -12,7 +12,7 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCa
 import net.snowflake.hivemetastoreconnector.util.HiveToSnowflakeSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.events.ListenerEvent;
-import org.apache.hadoop.hive.ql.secrets.AWSSecretsManagerSecretSource;
+import org.apache.hadoop.hive.ql.secrets.SecretSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -42,7 +41,6 @@ public class SnowflakeClient
 {
   private static final Logger log =
       LoggerFactory.getLogger(SnowflakeIcebergListener.class);
-  private static AWSSecretsManagerSecretSource source = new AWSSecretsManagerSecretSource();
   private static Scheduler scheduler;
 
   /**
@@ -161,11 +159,12 @@ public class SnowflakeClient
     catch (Exception e){
       log.error("There was an error creating the query: " +
               e.toString());
+      //for debug
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      String secretName = snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETNAME.getVarname());
-      throw new MetaException("aws-sm:///"+secretName+"  "+sw.toString());
+      String secretName = snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETURL.getVarname());
+      throw new MetaException(secretName+"  "+sw.toString());
     }
   }
 
@@ -260,12 +259,10 @@ public class SnowflakeClient
     {
       properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_PASSWORD.getSnowflakePropertyName(),
                      snowflakePassword);
+    }else{
+      properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_PASSWORD.getSnowflakePropertyName(),
+              getJDBCPasswordFromSecretSource(snowflakeConf));
     }
-    String secretName = snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETNAME.getVarname());
-    snowflakePassword = source.getSecret(new URI("aws-sm:///"+secretName));
-    properties.put(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_PASSWORD.getSnowflakePropertyName(),
-              snowflakePassword);
-
 
     // JDBC private key
     String privateKeyConf = snowflakeConf.getSecret(
@@ -293,6 +290,14 @@ public class SnowflakeClient
         SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_CONNECTION.getVarname());
     log.info(properties.toString());
     return DriverManager.getConnection(connectStr, properties);
+  }
+
+  private static String getJDBCPasswordFromSecretSource(SnowflakeConf snowflakeConf) throws Exception{
+    String secretSourceClass =  snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETSOURCE.getVarname(),
+            "org.apache.hadoop.hive.ql.secrets.AWSSecretsManagerSecretSource");
+    SecretSource source = (SecretSource) Class.forName(secretSourceClass).newInstance();
+    URI secretName = new URI(snowflakeConf.get(SnowflakeConf.ConfVars.SNOWFLAKE_JDBC_SECRETURL.getVarname()));
+    return source.getSecret(secretName);
   }
 
   /**
